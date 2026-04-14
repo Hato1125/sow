@@ -45,10 +45,18 @@ install_dots() (
 
     if $dryrun; then
       echo "mkdir -p $(dirname "$dst")"
-      echo "cp -rs $src/. $dst"
+      if [[ -d "$src" ]]; then
+        echo "cp -rs $src/. $dst"
+      else
+        echo "cp -sf $src $dst"
+      fi
     else
       mkdir -p "$(dirname "$dst")"
-      cp -rs "$src/." "$dst"
+      if [[ -d "$src" ]]; then
+        cp -rs "$src/." "$dst"
+      else
+        cp -sf "$src" "$dst"
+      fi
     fi
   done
 )
