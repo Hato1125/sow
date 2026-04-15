@@ -62,18 +62,26 @@ install_dots() (
     src="$(realpath "$key")"
     dst="${dots[$key]}"
 
-    if $dryrun; then
-      echo "mkdir -p $(dirname "$dst")"
-      if [[ -d "$src" ]]; then
+    if [[ -d "$src" ]]; then
+      if $dryrun; then
+        [[ -d "$dst" ]] && echo "find $dst -type l -delete"
+        echo "mkdir -p $dst"
         echo "cp -rs $src/. $dst"
       else
-        echo "cp -sf $src $dst"
+        [[ -d "$dst" ]] && find "$dst" -type l -delete
+        mkdir -p "$dst"
+        cp -rs "$src/." "$dst"
       fi
     else
-      mkdir -p "$(dirname "$dst")"
-      if [[ -d "$src" ]]; then
-        cp -rs "$src/." "$dst"
+      if [[ -e "$dst" && ! -L "$dst" ]]; then
+        continue
+      fi
+
+      if $dryrun; then
+        echo "mkdir -p $(dirname "$dst")"
+        echo "cp -sf $src $dst"
       else
+        mkdir -p "$(dirname "$dst")"
         cp -sf "$src" "$dst"
       fi
     fi
