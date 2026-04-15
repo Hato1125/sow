@@ -7,6 +7,25 @@ target_pkg=false
 target_dot=false
 dryrun=false
 
+help() {
+  echo 'Usage: sow [COMMAND] [OPTION]...'
+  echo 'Self-contained dotfile bootstrapper.'
+  echo ''
+  echo 'Commands'
+  echo '  deploy'
+  echo '    deployment packages and dotfiles'
+  echo '  help'
+  echo '    display this help and exit'
+  echo ''
+  echo 'Options'
+  echo '  -p'
+  echo '    target packages only'
+  echo '  -d'
+  echo '    target dotfiles only'
+  echo '  -n'
+  echo '    dry run; print actions without executing them'
+}
+
 install_pkgs() (
   source "$PKG_CONFIG_PATH"
 
@@ -86,5 +105,11 @@ case "$cmd" in
     if $target_dot; then
       install_dots
     fi
+    ;;
+  help|'') help ;;
+  *)
+    echo "sow: unknown command: $cmd" >&2
+    help >&2
+    exit 1
     ;;
 esac
