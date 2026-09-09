@@ -48,19 +48,22 @@ pkgs=(
 
 ### dot.conf
 
-Defines an indexed array of alternating source and destination paths. This file is sourced as Bash.
+Defines indexed arrays of alternating source and destination paths. This file is sourced as Bash.
 
 ```bash
-dots=(
-  ./test  "$HOME/.config/test"
-  ./test2 "$HOME/.config/test2"
+links=(
+  ./test "$HOME/.config/test"
+)
+
+copies=(
+  ./rules.md "$HOME/.config/example/rules.md"
 )
 ```
 
-Each source must be followed by its destination. A source may appear more than once, but duplicate destinations are rejected before deployment.
+Each source must be followed by its destination. Sources may appear more than once, but duplicate destinations across both arrays are rejected before deployment.
 
-- Directory sources are recursively symlinked into the destination using `cp -rs`. Existing symlinks in the destination are cleaned before re-linking.
-- Single-file sources are symlinked with `cp -sf`. If the destination already exists as a regular file (not a symlink), it is left untouched.
+- `links` creates symbolic links. Directories are linked recursively with `cp -rs`; regular files at the destination are preserved.
+- `copies` copies regular files with `cp -f`; symbolic links at the destination are replaced.
 
 ## License
 

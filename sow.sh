@@ -51,70 +51,115 @@ install_pkgs() (
 install_dots() (
   source "$DOT_CONFIG_PATH" || exit 1
 
-  if ! declare -p dots &>/dev/null; then
-    echo "${DOT_CONFIG_PATH}: no dots defined" >&2
+  if ! declare -p links &>/dev/null && ! declare -p copies &>/dev/null; then
+    echo "${DOT_CONFIG_PATH}: no links or copies defined" >&2
     exit 1
   fi
-
-  if [[ $(declare -p dots) != "declare -a "* ]]; then
-    echo "${DOT_CONFIG_PATH}: dots must be an indexed array" >&2
-    exit 1
-  fi
-
-  if (( ${#dots[@]} % 2 != 0 )); then
-    echo "${DOT_CONFIG_PATH}: dots must contain source-destination pairs" >&2
-    exit 1
-  fi
-
-  [[ ${#dots[@]} -eq 0 ]] && exit 0
 
   declare -A destinations=()
 
-  for ((i = 0; i < ${#dots[@]}; i += 2)); do
-    src="${dots[i]}"
-    dst="${dots[i + 1]}"
+  validate_paths() {
+    local name="$1"
+    local -n paths="$name"
+    local src dst resolved_src
 
-    if [[ -z "$src" || -z "$dst" ]]; then
-      echo "${DOT_CONFIG_PATH}: dotfile paths must not be empty" >&2
-      exit 1
+    if [[ $(declare -p "$name") != "declare -a "* ]]; then
+      echo "${DOT_CONFIG_PATH}: $name must be an indexed array" >&2
+      return 1
     fi
 
-    if [[ ${destinations["$dst"]+registered} ]]; then
-      echo "${DOT_CONFIG_PATH}: duplicate destination: $dst" >&2
-      exit 1
+    if (( ${#paths[@]} % 2 != 0 )); then
+      echo "${DOT_CONFIG_PATH}: $name must contain source-destination pairs" >&2
+      return 1
     fi
 
-    destinations["$dst"]="$src"
-  done
+    for ((i = 0; i < ${#paths[@]}; i += 2)); do
+      src="${paths[i]}"
+      dst="${paths[i + 1]}"
 
-  for ((i = 0; i < ${#dots[@]}; i += 2)); do
-    src="$(realpath "${dots[i]}")"
-    dst="${dots[i + 1]}"
+      if [[ -z "$src" || -z "$dst" ]]; then
+        echo "${DOT_CONFIG_PATH}: paths must not be empty" >&2
+        return 1
+      fi
 
-    if [[ -d "$src" ]]; then
-      if $dryrun; then
-        [[ -d "$dst" ]] && echo "find $dst -type l -delete"
-        echo "mkdir -p $dst"
-        echo "cp -rs $src/. $dst"
+      if [[ "$name" == copies ]]; then
+        resolved_src="$(realpath "$src")"
+
+        if [[ ! -f "$resolved_src" ]]; then
+          echo "${DOT_CONFIG_PATH}: copy source must be a regular file: $src" >&2
+          return 1
+        fi
+
+        if [[ -d "$dst" && ! -L "$dst" ]]; then
+          echo "${DOT_CONFIG_PATH}: copy destination is a directory: $dst" >&2
+          return 1
+        fi
+      fi
+
+      if [[ ${destinations["$dst"]+registered} ]]; then
+        echo "${DOT_CONFIG_PATH}: duplicate destination: $dst" >&2
+        return 1
+      fi
+
+      destinations["$dst"]="$src"
+    done
+  }
+
+  if declare -p links &>/dev/null; then
+    validate_paths links || exit 1
+  fi
+
+  if declare -p copies &>/dev/null; then
+    validate_paths copies || exit 1
+  fi
+
+  if declare -p links &>/dev/null; then
+    for ((i = 0; i < ${#links[@]}; i += 2)); do
+      src="$(realpath "${links[i]}")"
+      dst="${links[i + 1]}"
+
+      if [[ -d "$src" ]]; then
+        if $dryrun; then
+          [[ -d "$dst" ]] && echo "find $dst -type l -delete"
+          echo "mkdir -p $dst"
+          echo "cp -rs $src/. $dst"
+        else
+          [[ -d "$dst" ]] && find "$dst" -type l -delete
+          mkdir -p "$dst"
+          cp -rs "$src/." "$dst"
+        fi
       else
-        [[ -d "$dst" ]] && find "$dst" -type l -delete
-        mkdir -p "$dst"
-        cp -rs "$src/." "$dst"
+        if [[ -e "$dst" && ! -L "$dst" ]]; then
+          continue
+        fi
+
+        if $dryrun; then
+          echo "mkdir -p $(dirname "$dst")"
+          echo "cp -sf $src $dst"
+        else
+          mkdir -p "$(dirname "$dst")"
+          cp -sf "$src" "$dst"
+        fi
       fi
-    else
-      if [[ -e "$dst" && ! -L "$dst" ]]; then
-        continue
-      fi
+    done
+  fi
+
+  if declare -p copies &>/dev/null; then
+    for ((i = 0; i < ${#copies[@]}; i += 2)); do
+      src="$(realpath "${copies[i]}")"
+      dst="${copies[i + 1]}"
 
       if $dryrun; then
+        [[ -L "$dst" ]] && echo "rm $dst"
         echo "mkdir -p $(dirname "$dst")"
-        echo "cp -sf $src $dst"
+        echo "cp -f $src $dst"
       else
+        [[ -L "$dst" ]] && rm "$dst"
         mkdir -p "$(dirname "$dst")"
-        cp -sf "$src" "$dst"
+        cp -f "$src" "$dst"
       fi
-    fi
-  done
+    done
+  fi
 )
 
 cmd="$1"
