@@ -49,18 +49,47 @@ install_pkgs() (
 )
 
 install_dots() (
-  source "$DOT_CONFIG_PATH"
+  source "$DOT_CONFIG_PATH" || exit 1
 
   if ! declare -p dots &>/dev/null; then
     echo "${DOT_CONFIG_PATH}: no dots defined" >&2
     exit 1
   fi
 
+  if [[ $(declare -p dots) != "declare -a "* ]]; then
+    echo "${DOT_CONFIG_PATH}: dots must be an indexed array" >&2
+    exit 1
+  fi
+
+  if (( ${#dots[@]} % 2 != 0 )); then
+    echo "${DOT_CONFIG_PATH}: dots must contain source-destination pairs" >&2
+    exit 1
+  fi
+
   [[ ${#dots[@]} -eq 0 ]] && exit 0
 
-  for key in "${!dots[@]}"; do
-    src="$(realpath "$key")"
-    dst="${dots[$key]}"
+  declare -A destinations=()
+
+  for ((i = 0; i < ${#dots[@]}; i += 2)); do
+    src="${dots[i]}"
+    dst="${dots[i + 1]}"
+
+    if [[ -z "$src" || -z "$dst" ]]; then
+      echo "${DOT_CONFIG_PATH}: dotfile paths must not be empty" >&2
+      exit 1
+    fi
+
+    if [[ ${destinations["$dst"]+registered} ]]; then
+      echo "${DOT_CONFIG_PATH}: duplicate destination: $dst" >&2
+      exit 1
+    fi
+
+    destinations["$dst"]="$src"
+  done
+
+  for ((i = 0; i < ${#dots[@]}; i += 2)); do
+    src="$(realpath "${dots[i]}")"
+    dst="${dots[i + 1]}"
 
     if [[ -d "$src" ]]; then
       if $dryrun; then
