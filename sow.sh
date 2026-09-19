@@ -8,22 +8,24 @@ target_dot=false
 dryrun=false
 
 help() {
-  echo 'Usage: sow [COMMAND] [OPTION]...'
-  echo 'Self-contained dotfile bootstrapper.'
-  echo ''
-  echo 'Commands'
-  echo '  deploy'
-  echo '    deployment packages and dotfiles'
-  echo '  help'
-  echo '    display this help and exit'
-  echo ''
-  echo 'Options'
-  echo '  -p'
-  echo '    target packages only'
-  echo '  -d'
-  echo '    target dotfiles only'
-  echo '  -n'
-  echo '    dry run; print actions without executing them'
+  cat <<'EOF'
+Usage: sow [COMMAND] [OPTION]...
+Self-contained dotfile bootstrapper.
+
+Commands
+  deploy
+    deployment packages and dotfiles
+  help
+    display this help and exit
+
+Options
+  -p
+    target packages only
+  -d
+    target dotfiles only
+  -n
+    dry run; print actions without executing them
+EOF
 }
 
 install_pkgs() (
