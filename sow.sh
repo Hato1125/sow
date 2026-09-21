@@ -32,19 +32,20 @@ install_pkgs() (
   source "$PKG_CONFIG_PATH"
 
   if [[ ! -v install ]]; then
-    echo "${PKG_CONFIG_PATH}: no install command defined" >&2
+    printf '%s\n' "${PKG_CONFIG_PATH}: no install command defined" >&2
     exit 1
   fi
 
   if [[ ! -v pkgs ]]; then
-    echo "${PKG_CONFIG_PATH}: no pkgs defined" >&2
+    printf '%s\n' "${PKG_CONFIG_PATH}: no pkgs defined" >&2
     exit 1
   fi
 
   [[ ${#pkgs[@]} -eq 0 ]] && exit 0
 
   if $dryrun; then
-    echo "${install[@]}" "${pkgs[@]}"
+    printf '%q ' "${install[@]}" "${pkgs[@]}"
+    printf '\n'
   else
     exec "${install[@]}" "${pkgs[@]}"
   fi
@@ -54,7 +55,7 @@ install_dots() (
   source "$DOT_CONFIG_PATH" || exit 1
 
   if ! declare -p links &>/dev/null && ! declare -p copies &>/dev/null; then
-    echo "${DOT_CONFIG_PATH}: no links or copies defined" >&2
+    printf '%s\n' "${DOT_CONFIG_PATH}: no links or copies defined" >&2
     exit 1
   fi
 
@@ -66,12 +67,13 @@ install_dots() (
     local src dst resolved_src
 
     if [[ $(declare -p "$name") != "declare -a "* ]]; then
-      echo "${DOT_CONFIG_PATH}: $name must be an indexed array" >&2
+      printf '%s\n' "${DOT_CONFIG_PATH}: $name must be an indexed array" >&2
       return 1
     fi
 
     if (( ${#paths[@]} % 2 != 0 )); then
-      echo "${DOT_CONFIG_PATH}: $name must contain source-destination pairs" >&2
+      printf '%s\n' \
+        "${DOT_CONFIG_PATH}: $name must contain source-destination pairs" >&2
       return 1
     fi
 
@@ -80,7 +82,7 @@ install_dots() (
       dst="${paths[i + 1]}"
 
       if [[ -z $src || -z $dst ]]; then
-        echo "${DOT_CONFIG_PATH}: paths must not be empty" >&2
+        printf '%s\n' "${DOT_CONFIG_PATH}: paths must not be empty" >&2
         return 1
       fi
 
@@ -88,18 +90,20 @@ install_dots() (
         resolved_src="$(realpath "$src")"
 
         if [[ ! -f $resolved_src ]]; then
-          echo "${DOT_CONFIG_PATH}: copy source must be a regular file: $src" >&2
+          printf '%s\n' \
+            "${DOT_CONFIG_PATH}: copy source must be a regular file: $src" >&2
           return 1
         fi
 
         if [[ -d $dst && ! -L $dst ]]; then
-          echo "${DOT_CONFIG_PATH}: copy destination is a directory: $dst" >&2
+          printf '%s\n' \
+            "${DOT_CONFIG_PATH}: copy destination is a directory: $dst" >&2
           return 1
         fi
       fi
 
       if [[ ${destinations["$dst"]+registered} ]]; then
-        echo "${DOT_CONFIG_PATH}: duplicate destination: $dst" >&2
+        printf '%s\n' "${DOT_CONFIG_PATH}: duplicate destination: $dst" >&2
         return 1
       fi
 
@@ -168,9 +172,9 @@ install_dots() (
       dst="${copies[i + 1]}"
 
       if $dryrun; then
-        [[ -L $dst ]] && echo "rm $dst"
-        echo "mkdir -p $(dirname "$dst")"
-        echo "cp -f $src $dst"
+        [[ -L $dst ]] && printf 'rm %q\n' "$dst"
+        printf 'mkdir -p %q\n' "$(dirname "$dst")"
+        printf 'cp -f %q %q\n' "$src" "$dst"
       else
         [[ -L $dst ]] && rm "$dst"
         mkdir -p "$(dirname "$dst")"
@@ -208,7 +212,7 @@ case "$cmd" in
     ;;
   help|'') help ;;
   *)
-    echo "sow: unknown command: $cmd" >&2
+    printf '%s\n' "sow: unknown command: $cmd" >&2
     help >&2
     exit 1
     ;;
