@@ -79,20 +79,20 @@ install_dots() (
       src="${paths[i]}"
       dst="${paths[i + 1]}"
 
-      if [[ -z "$src" || -z "$dst" ]]; then
+      if [[ -z $src || -z $dst ]]; then
         echo "${DOT_CONFIG_PATH}: paths must not be empty" >&2
         return 1
       fi
 
-      if [[ "$name" == copies ]]; then
+      if [[ $name == copies ]]; then
         resolved_src="$(realpath "$src")"
 
-        if [[ ! -f "$resolved_src" ]]; then
+        if [[ ! -f $resolved_src ]]; then
           echo "${DOT_CONFIG_PATH}: copy source must be a regular file: $src" >&2
           return 1
         fi
 
-        if [[ -d "$dst" && ! -L "$dst" ]]; then
+        if [[ -d $dst && ! -L $dst ]]; then
           echo "${DOT_CONFIG_PATH}: copy destination is a directory: $dst" >&2
           return 1
         fi
@@ -120,18 +120,18 @@ install_dots() (
       src="$(realpath "${links[i]}")"
       dst="${links[i + 1]}"
 
-      if [[ -d "$src" ]]; then
+      if [[ -d $src ]]; then
         if $dryrun; then
-          [[ -d "$dst" ]] && echo "find $dst -type l -delete"
+          [[ -d $dst ]] && echo "find $dst -type l -delete"
           echo "mkdir -p $dst"
           echo "cp -rs $src/. $dst"
         else
-          [[ -d "$dst" ]] && find "$dst" -type l -delete
+          [[ -d $dst ]] && find "$dst" -type l -delete
           mkdir -p "$dst"
           cp -rs "$src/." "$dst"
         fi
       else
-        if [[ -e "$dst" && ! -L "$dst" ]]; then
+        if [[ -e $dst && ! -L $dst ]]; then
           continue
         fi
 
@@ -152,11 +152,11 @@ install_dots() (
       dst="${copies[i + 1]}"
 
       if $dryrun; then
-        [[ -L "$dst" ]] && echo "rm $dst"
+        [[ -L $dst ]] && echo "rm $dst"
         echo "mkdir -p $(dirname "$dst")"
         echo "cp -f $src $dst"
       else
-        [[ -L "$dst" ]] && rm "$dst"
+        [[ -L $dst ]] && rm "$dst"
         mkdir -p "$(dirname "$dst")"
         cp -f "$src" "$dst"
       fi
