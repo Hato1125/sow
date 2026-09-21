@@ -121,9 +121,12 @@ install_dots() (
 
   link_path() {
     local src="$1" dst="$2" child
+    local resolved_src resolved_dst
 
     if [[ -L $dst ]]; then
-      if [[ $(readlink "$dst") == "$src" ]]; then
+      if resolved_src="$(realpath -- "$src")" &&
+        resolved_dst="$(realpath -- "$dst")" &&
+        [[ $resolved_dst == "$resolved_src" ]]; then
         return 0
       fi
       printf 'sow: destination conflict: %s\n' "$dst" >&2
