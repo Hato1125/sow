@@ -115,34 +115,50 @@ install_dots() (
     validate_paths copies || exit 1
   fi
 
-  if declare -p links &>/dev/null; then
-    for ((i = 0; i < ${#links[@]}; i += 2)); do
-      src="$(realpath "${links[i]}")"
-      dst="${links[i + 1]}"
+  link_path() {
+    local src="$1" dst="$2" child
 
-      if [[ -d $src ]]; then
-        if $dryrun; then
-          [[ -d $dst ]] && echo "find $dst -type l -delete"
-          echo "mkdir -p $dst"
-          echo "cp -rs $src/. $dst"
-        else
-          [[ -d $dst ]] && find "$dst" -type l -delete
-          mkdir -p "$dst"
-          cp -rs "$src/." "$dst"
-        fi
-      else
-        if [[ -e $dst && ! -L $dst ]]; then
-          continue
-        fi
-
-        if $dryrun; then
-          echo "mkdir -p $(dirname "$dst")"
-          echo "cp -sf $src $dst"
-        else
-          mkdir -p "$(dirname "$dst")"
-          cp -sf "$src" "$dst"
-        fi
+    if [[ -L $dst ]]; then
+      if [[ $(readlink "$dst") == "$src" ]]; then
+        return 0
       fi
+      printf 'sow: destination conflict: %s\n' "$dst" >&2
+      return 1
+    fi
+
+    if [[ -d $src && ! -L $src ]]; then
+      if [[ -e $dst && ! -d $dst ]]; then
+        printf 'sow: destination conflict: %s\n' "$dst" >&2
+        return 1
+      fi
+
+      if $dryrun; then
+        printf 'mkdir -p -- %q\n' "$dst"
+      else
+        mkdir -p -- "$dst" || return 1
+      fi
+
+      for child in "$src"/*; do
+        link_path "$child" "$dst/${child##*/}" || return 1
+      done
+    elif [[ -e $dst ]]; then
+      printf 'sow: destination conflict: %s\n' "$dst" >&2
+      return 1
+    elif $dryrun; then
+      printf 'mkdir -p -- %q\n' "$(dirname "$dst")"
+      printf 'ln -s -- %q %q\n' "$src" "$dst"
+    else
+      mkdir -p -- "$(dirname "$dst")" || return 1
+      ln -s -- "$src" "$dst" || return 1
+    fi
+  }
+
+  if declare -p links &>/dev/null; then
+    shopt -s dotglob nullglob
+    for ((i = 0; i < ${#links[@]}; i += 2)); do
+      src="$(realpath -e -- "${links[i]}")" || exit 1
+      dst="${links[i + 1]}"
+      link_path "$src" "$dst" || exit 1
     done
   fi
 

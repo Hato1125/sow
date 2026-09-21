@@ -62,8 +62,10 @@ copies=(
 
 Each source must be followed by its destination. Sources may appear more than once, but duplicate destinations across both arrays are rejected before deployment.
 
-- `links` creates symbolic links. Directories are linked recursively with `cp -rs`; regular files at the destination are preserved.
+- `links` creates symbolic links, creating directories as needed. Matching links are skipped; conflicting files or links stop deployment with an error. Unrelated files and links are left untouched.
 - `copies` copies regular files with `cp -f`; symbolic links at the destination are replaced.
+
+Dry runs check for conflicts without making changes. If deployment fails, earlier changes are not rolled back.
 
 ## License
 
