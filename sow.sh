@@ -6,6 +6,7 @@ readonly DOT_CONFIG_PATH='./dot.conf'
 target_pkg=false
 target_dot=false
 dryrun=false
+force=false
 
 help() {
   cat <<'EOF'
@@ -25,6 +26,8 @@ Options
     target dotfiles only
   -n
     dry run; print actions without executing them
+  -f
+    force; replace conflicting files and links instead of failing
 EOF
 }
 
@@ -119,24 +122,40 @@ install_dots() (
     validate_paths copies || exit 1
   fi
 
-  link_path() {
-    local src="$1" dst="$2" child
-    local resolved_src resolved_dst
+  remove_conflict() {
+    local dst="$1"
 
-    if [[ -L $dst ]]; then
-      if resolved_src="$(realpath -- "$src")" &&
-        resolved_dst="$(realpath -- "$dst")" &&
-        [[ $resolved_dst == "$resolved_src" ]]; then
-        return 0
-      fi
+    if ! $force || [[ -d $dst && ! -L $dst ]]; then
       printf 'sow: destination conflict: %s\n' "$dst" >&2
       return 1
     fi
 
+    if $dryrun; then
+      printf 'rm -- %q\n' "$dst"
+    else
+      rm -- "$dst" || return 1
+    fi
+  }
+
+  # replaced: an ancestor of dst was a link that has been removed, so nothing
+  # below it can conflict (a dry run still sees through the old link)
+  link_path() {
+    local src="$1" dst="$2" replaced="${3:-false}" child
+    local resolved_src resolved_dst
+
+    if ! $replaced && [[ -L $dst ]]; then
+      if resolved_src="$(realpath -- "$src")" &&
+        resolved_dst="$(realpath -- "$dst" 2>/dev/null)" &&
+        [[ $resolved_dst == "$resolved_src" ]]; then
+        return 0
+      fi
+      remove_conflict "$dst" || return 1
+      replaced=true
+    fi
+
     if [[ -d $src && ! -L $src ]]; then
-      if [[ -e $dst && ! -d $dst ]]; then
-        printf 'sow: destination conflict: %s\n' "$dst" >&2
-        return 1
+      if ! $replaced && [[ -e $dst && ! -d $dst ]]; then
+        remove_conflict "$dst" || return 1
       fi
 
       if $dryrun; then
@@ -146,17 +165,20 @@ install_dots() (
       fi
 
       for child in "$src"/*; do
-        link_path "$child" "$dst/${child##*/}" || return 1
+        link_path "$child" "$dst/${child##*/}" "$replaced" || return 1
       done
-    elif [[ -e $dst ]]; then
-      printf 'sow: destination conflict: %s\n' "$dst" >&2
-      return 1
-    elif $dryrun; then
-      printf 'mkdir -p -- %q\n' "$(dirname "$dst")"
-      printf 'ln -s -- %q %q\n' "$src" "$dst"
     else
-      mkdir -p -- "$(dirname "$dst")" || return 1
-      ln -s -- "$src" "$dst" || return 1
+      if ! $replaced && [[ -e $dst ]]; then
+        remove_conflict "$dst" || return 1
+      fi
+
+      if $dryrun; then
+        printf 'mkdir -p -- %q\n' "$(dirname "$dst")"
+        printf 'ln -s -- %q %q\n' "$src" "$dst"
+      else
+        mkdir -p -- "$(dirname "$dst")" || return 1
+        ln -s -- "$src" "$dst" || return 1
+      fi
     fi
   }
 
@@ -190,11 +212,12 @@ install_dots() (
 cmd="$1"
 shift
 
-while getopts "pdn" opt; do
+while getopts "pdnf" opt; do
   case $opt in
     p) target_pkg=true ;;
     d) target_dot=true ;;
     n) dryrun=true ;;
+    f) force=true ;;
   esac
 done
 

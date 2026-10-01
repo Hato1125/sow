@@ -24,6 +24,7 @@ sow [COMMAND] [OPTION]...
 |`-p`|Target packages only|
 |`-d`|Target dotfiles only|
 |`-n`|Dry run; print actions without executing them|
+|`-f`|Force; replace conflicting files and links instead of failing|
 
 By default (no `-p` or `-d`), both packages and dotfiles are deployed.
 
@@ -62,7 +63,7 @@ copies=(
 
 Each source must be followed by its destination. Sources may appear more than once, but duplicate destinations across both arrays are rejected before deployment.
 
-- `links` creates symbolic links, creating directories as needed. Matching links are skipped; conflicting files or links stop deployment with an error. Unrelated files and links are left untouched.
+- `links` creates symbolic links, creating directories as needed. Matching links are skipped; conflicting files or links stop deployment with an error. Unrelated files and links are left untouched. With `-f`, conflicting files and links are removed and replaced, which is useful after moving the dotfiles repository; a directory in the way of a file is never removed and still fails.
 - `copies` copies regular files with `cp -f`; symbolic links at the destination are replaced.
 
 Dry runs check for conflicts without making changes. If deployment fails, earlier changes are not rolled back.
