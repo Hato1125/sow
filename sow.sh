@@ -137,8 +137,8 @@ install_dots() (
     fi
   }
 
-  # replaced: an ancestor of dst was a link that has been removed, so nothing
-  # below it can conflict (a dry run still sees through the old link)
+  # A removed link at dst or above leaves nothing below it to conflict with.
+  # Dry runs keep that link, so the checks would otherwise see through it.
   link_path() {
     local src="$1" dst="$2" replaced="${3:-false}" child
     local resolved_src resolved_dst
