@@ -218,6 +218,7 @@ while getopts "pdnf" opt; do
     d) target_dot=true ;;
     n) dryrun=true ;;
     f) force=true ;;
+    *) exit 1 ;;
   esac
 done
 
